@@ -3,15 +3,18 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
-import plotly.express as px   # ← 新增这一行，修复 px 未定义报错
+import plotly.express as px
 
 # 1. 页面基础配置
 st.set_page_config(page_title="Alpha Factory 数字化看板", layout="wide")
 
-OUTPUT_DIR = r"D:\MSTS\app\backtest_outputs"
+# ✅ 动态自适应路径（本地 Windows + Streamlit Cloud Linux 全兼容）
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(BASE_DIR, "backtest_outputs")
+
 curves_parquet_path = os.path.join(OUTPUT_DIR, "backtest_curves.parquet")
-summary_path = os.path.join(OUTPUT_DIR, "factor_summary.csv")
-last_update_path = os.path.join(OUTPUT_DIR, "last_update.txt")
+summary_path        = os.path.join(OUTPUT_DIR, "factor_summary.csv")
+last_update_path    = os.path.join(OUTPUT_DIR, "last_update.txt")
 
 st.title("🚀 Alpha Factory 数字化因子量化看板")
 st.caption("基于工业级特征工厂的自适应多板块复合回测系统")
