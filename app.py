@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import os
 import subprocess
+from datetime import datetime
 import plotly.express as px
 
 # ============================================================
@@ -10,10 +11,12 @@ import plotly.express as px
 # ============================================================
 st.set_page_config(page_title="Alpha Factory 量化信号系统", layout="wide")
 
+# ✅ 保留云端的动态自适应路径（本地 Windows + Streamlit Cloud Linux 全兼容）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "backtest_outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# ✅ 保留本地最新的全部 7 个数据路径定义
 curves_parquet_path = os.path.join(OUTPUT_DIR, "backtest_curves.parquet")
 summary_path = os.path.join(OUTPUT_DIR, "factor_summary.csv")
 last_update_path = os.path.join(OUTPUT_DIR, "last_update.txt")
