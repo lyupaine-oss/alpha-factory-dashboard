@@ -10,10 +10,10 @@ echo [1/3] 正在暂存本地变更...
 git add .
 
 echo [2/3] 正在生成自动化时间戳...
-set mydate=%date:~0,4%%date:~5,2%%date:~8,2%
-set mytime=%time:~0,2%%time:~3,2%
-set mytime=%mytime: =0%
-set ts=%mydate%_%mytime%
+:: 用 wmic 直接读取系统时间，彻底绕开 %date% 的格式陷阱
+:: 输出格式固定为 YYYYMMDD_HHMM，与地区/语言设置无关
+for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set dt=%%I
+set ts=%dt:~0,4%%dt:~4,2%%dt:~6,2%_%dt:~8,2%%dt:~10,2%
 
 git diff --cached --quiet
 if %errorlevel% equ 0 (
