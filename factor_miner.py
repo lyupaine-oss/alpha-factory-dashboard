@@ -4,6 +4,7 @@ factor_miner.py
 ============================================================
 ✅ 工业级特征库管理：全量解析 1768 个交互因子绩效表
 ✅ 多维淘金矩阵：支持绝对预测强度排序、正负 Alpha 自动分流
+✅ 多环境自适应：智能识别 Streamlit Cloud 云端环境与本地 D 盘环境
 ✅ 双工架构：既可作为模块由 app.py 路由调用，亦可独立本地调试运行
 """
 
@@ -18,10 +19,24 @@ def render_factor_mining_page():
     st.markdown("## 🧬 Alpha 因子大淘金 & 特征库监控")
     st.markdown("当前因子资产库总容量：`1768` 个智能交互特征")
     
-    csv_path = r"D:\MSTS\outputs\final_tables\all_interaction_icir.csv"
+    # ============================================================
+    # 🌐 【核心修复】自适应多环境路径解析架构
+    # ============================================================
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     
-    if not os.path.exists(csv_path):
-        st.error(f"❌ 未找到因子绩效文件，请检查路径是否正确：{csv_path}")
+    # 方案 A（云端优先）：GitHub 仓库/项目内部的相对路径
+    cloud_data_path = os.path.join(BASE_DIR, "data", "all_interaction_icir.csv")
+    # 方案 B（本地备选）：本地全路径
+    local_absolute_path = r"D:\MSTS\outputs\final_tables\all_interaction_icir.csv"
+    
+    # 智能判定：如果云端/相对路径存在文件则读方案 A，否则降级读方案 B
+    if os.path.exists(cloud_data_path):
+        csv_path = cloud_data_path
+    elif os.path.exists(local_absolute_path):
+        csv_path = local_absolute_path
+    else:
+        st.error("❌ 未找到因子绩效文件！")
+        st.info(f"请检查以下路径是否存在有效数据:\n1. 仓库相对路径: `{cloud_data_path}`\n2. 本地绝对路径: `{local_absolute_path}`")
         return
         
     try:
