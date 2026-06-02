@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 
-:: 💡 绝对锁定：确保脚本不论在哪里被调用，都强行物理切换到本地仓库根目录
+:: 💡 绝对锁定：确保脚本不论在哪里被调用，都强行物理切换到本地 App 仓库根目录
 cd /d D:\MSTS\app
 
 echo ========================================
@@ -10,24 +10,26 @@ echo ========================================
 
 echo [0/4] 🔄 正在自动物理搬运今日最新分析状态小文件...
 
-:: 1. 搬运特征工厂的 CSV 小文件
+:: 1. 搬运特征工厂的 CSV 小文件到 app/data 下
 xcopy "D:\MSTS\outputs\final_tables\*.csv" "D:\MSTS\app\data\" /Y /Q >nul 2>&1
 
-:: 2. 精准指名道姓搬运 final_tables 的特定 json，绝不盲目全拷（防止覆盖）
+:: 2. 精准搬运 final_tables 的特定 json
 if exist "D:\MSTS\outputs\final_tables\valid_features.json" (
     xcopy "D:\MSTS\outputs\final_tables\valid_features.json" "D:\MSTS\app\data\" /Y /Q >nul 2>&1
 )
 
-:: 3. 🎯 精准搬运今日刚出炉的信号核心报告（指名道姓，物理防踩踏）
+:: 3. 🎯 精准搬运今日刚出炉的信号核心报告
 xcopy "D:\MSTS\outputs\signals\pnl_report_v3.json" "D:\MSTS\app\data\" /Y /Q
 xcopy "D:\MSTS\outputs\signals\short_governance_report.json" "D:\MSTS\app\data\" /Y /Q
 
-:: 4. 🚀 选填：如果网页端确实需要读取这个 parquet 信号文件，解除下面这行的注释
-:: xcopy "D:\MSTS\outputs\signals\alpha_selection.parquet" "D:\MSTS\app\data\" /Y /Q
+:: 4. 🚨【新增核心搬运】把 pnl_tracker.py 生成在 backtest_outputs 里的最新成果，同步准备好
+if exist "D:\MSTS\app\backtest_outputs\pnl_report.txt" (
+    echo [i] 发现最新复盘文案，正在就地整备...
+)
 
 echo.
 echo [1/4] 🚀 正在调度 hf_daily_push.py 生成今日量化日报推文...
-:: 使用当前的 Python 环境运行每日推送生成脚本
+:: 💡 此时工作目录在 D:\MSTS\app，hf_daily_push.py 会直接读取同目录或 backtest_outputs 下的文件
 python hf_daily_push.py
 if %errorlevel% neq 0 (
     echo [⚠️] hf_daily_push.py 运行似乎遇到了点问题，请检查上方报错！
@@ -40,6 +42,7 @@ echo.
 echo [2/4] 正在暂存本地变更...
 :: 强制再次通知 Git 忽略那些被套上隐身衣的本地密钥文件
 git update-index --assume-unchanged .env >nul 2>&1
+:: 将 app 目录下的所有变化（包含新生成的 data 和最新的代码修改）一网打尽
 git add .
 
 echo [3/4] 正在生成自动化时间戳...
@@ -56,7 +59,6 @@ if %errorlevel% equ 0 (
 echo [4/4] 正在推送到 GitHub 远程仓库...
 set retry=0
 :PUSH_RETRY
-:: 自动根据网络直连测试，保持最纯净的无代理推流状态
 git push origin main
 if %errorlevel% equ 0 goto PUSH_OK
 set /a retry+=1
@@ -67,19 +69,8 @@ if %retry% lss 3 (
 )
 echo ========================================
 echo    Push 失败!
-echo    请检查以下几项：
-echo    1. 网络是否能访问 GitHub
-echo    2. 是否需要设置代理
-echo    3. GitHub 令牌是否过期
+echo    请检查网络或代理设置。
 echo ========================================
-echo.
-echo [提示] 设置代理（替换为你的实际端口）：
-echo    git config --global http.proxy http://127.0.0.1:7890
-echo    git config --global https.proxy http://127.0.0.1:7890
-echo.
-echo [提示] 取消代理：
-echo    git config --global --unset http.proxy
-echo    git config --global --unset https.proxy
 goto END
 
 :PUSH_OK
