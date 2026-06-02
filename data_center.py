@@ -126,6 +126,7 @@ def render_data_download_component():
             )
             
             # 使用标准的 streamlit 凭证输入框实现就地升级解锁
+            
             license_key = st.text_input("🔑 输入 Pro 激活凭证解锁全量资产", type="password")
             if license_key:
                 # 这里保持你专属的独立硬编码密钥
