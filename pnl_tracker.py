@@ -2,7 +2,7 @@
 """
 pnl_tracker.py
 ============================================================
-AlphaOS 持仓盈亏滚动复盘流水线（逻辑修正版）
+AlphaOS 持仓盈亏滚动复盘流水线（逻辑修正版 | 数据脱敏版）
 ============================================================
 """
 
@@ -16,12 +16,16 @@ from datetime import datetime
 # ============================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 优先使用相对路径，兼容 Streamlit Cloud
-DATA_PATH = os.path.join(BASE_DIR, "..", "outputs", "final_tables", "train_set_enhanced.parquet")
+# 💡 核心安全修改：绝对禁止读取带明文特征的 enhanced，强行锁定脱敏盲化版 blinded
+DATA_PATH = os.path.join(BASE_DIR, "..", "outputs", "final_tables", "train_set_blinded.parquet")
 
 # 如果相对路径不存在，回退到本地开发路径
 if not os.path.exists(DATA_PATH):
-    DATA_PATH = r"D:\MSTS\outputs\final_tables\train_set_enhanced.parquet"
+    DATA_PATH = r"D:\MSTS\outputs\final_tables\train_set_blinded.parquet"
+
+# 二次安全校验：如果仍然误读到明文文件，直接报错终止
+if "enhanced" in DATA_PATH.lower():
+    raise RuntimeError("❌ 安全熔断：检测到试图读取明文特征数据集 'enhanced'，已强制终止。请检查 DATA_PATH 配置。")
 
 OUTPUT_DIR = os.path.join(BASE_DIR, "backtest_outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -44,23 +48,28 @@ CURRENT_POSITIONS = {
 HOLDING_DAYS = 5
 
 # ============================================================
-# 2. 数据加载
+# 2. 数据加载（仅使用脱敏后的 blinded 数据集）
 # ============================================================
-print("⏳ 正在读取数据集...")
+print("⏳ 正在读取脱敏数据集（盲化版）...")
+print(f"   安全路径：{DATA_PATH}")
+
+# 检查文件是否存在
+if not os.path.exists(DATA_PATH):
+    raise FileNotFoundError(f"❌ 脱敏数据文件不存在：{DATA_PATH}\n请先运行 make_blind_data.py 生成 train_set_blinded.parquet")
+
 df = pd.read_parquet(DATA_PATH, columns=["trade_date", "symbol", "close"])
 df["trade_date"] = pd.to_datetime(df["trade_date"])
 
 all_dates = sorted(df["trade_date"].unique())
 latest_date = all_dates[-1]
 today_str = datetime.now().strftime("%Y-%m-%d")
-print(f"✅ 数据最新日期：{latest_date.date()}")
+print(f"✅ 脱敏数据最新日期：{latest_date.date()}")
 
 # ============================================================
 # 3. 计算系统运行第 N 天
 # ============================================================
 start_dt = pd.Timestamp(SYSTEM_START_DATE)
 day_count = (pd.Timestamp(today_str) - start_dt).days + 1
-
 
 # ============================================================
 # 4. 工具函数
@@ -71,20 +80,16 @@ def get_close(symbol: str, date: pd.Timestamp) -> float:
         return np.nan
     return float(sub.sort_values("trade_date").iloc[-1]["close"])
 
-
 def calc_holding_days(entry_date_str: str, end_date: pd.Timestamp) -> int:
     entry = pd.Timestamp(entry_date_str)
     return sum(1 for d in all_dates if entry < d <= end_date)
 
-
 def get_exit_date(entry_date_str: str, holding: int) -> pd.Timestamp:
     entry = pd.Timestamp(entry_date_str)
-    # 找到建仓日之后所有的有效交易日
     future_dates = [d for d in all_dates if d > entry]
     if len(future_dates) >= holding:
         return future_dates[holding - 1]
     return future_dates[-1] if future_dates else entry
-
 
 # ============================================================
 # 5. 逐笔计算
@@ -106,11 +111,9 @@ for symbol, cfg in CURRENT_POSITIONS.items():
         raw_ret = (price_now - price_entry) / price_entry
         ret = raw_ret * direction
 
-        # 精准计算时间逻辑
         days_held = calc_holding_days(cfg["entry_date"], latest_date)
         exit_date = get_exit_date(cfg["entry_date"], HOLDING_DAYS)
 
-        # 处理超期逻辑，防止出现负数或剩余0天却在持仓的尴尬
         if latest_date > exit_date:
             days_remain = 0
             over_days = sum(1 for d in all_dates if exit_date < d <= latest_date)
@@ -163,7 +166,6 @@ if is_exit_day and not df_current.empty:
 
     if os.path.exists(PNL_HISTORY_PATH):
         df_hist = pd.read_csv(PNL_HISTORY_PATH)
-        # 简单防重复归档逻辑：如果当前日期的当前品种已归档，则不再叠加
         mask = (df_hist["close_date"] == str(latest_date.date())) & (df_hist["symbol"].isin(df_to_save["symbol"]))
         if not mask.any():
             df_hist = pd.concat([df_hist, df_to_save], ignore_index=True)
@@ -177,15 +179,13 @@ if is_exit_day and not df_current.empty:
         print(f"📚 pnl_history.csv 已建立并完成首次归档")
 
 # ============================================================
-# 8. 生成播报文案（增加空保护与美化）
+# 8. 生成播报文案
 # ============================================================
 total_ret = df_current["ret_pct"].mean() if not df_current.empty else 0.0
 win_count = int((df_current["ret_pct"] > 0).sum()) if not df_current.empty else 0
 total_count = len(df_current)
-
 total_emoji = "✅" if total_ret > 0 else ("❌" if total_ret < 0 else "➖")
 
-# 历史统计
 hist_win_rate_str = "积累中…"
 hist_total_ret_str = "—"
 if os.path.exists(PNL_HISTORY_PATH):
@@ -211,7 +211,7 @@ if records:
     lines.append(f"📅 建仓日期：{records[0]['entry_date']}")
     lines.append(f"📅 数据截至：{latest_date.date()}")
     lines.append(f"📅 预计平仓：{records[0]['exit_date']}")
-    lines.append(f"{records[0]['status_text']}")  # 动态状态提示
+    lines.append(f"{records[0]['status_text']}")
 else:
     lines.append("暂无持仓记录")
 
@@ -257,7 +257,7 @@ print(f"\n📝 播报文案已保存 → {PNL_REPORT_PATH}")
 # 10. 终端摘要
 # ============================================================
 print(f"\n{'─' * 50}")
-print(f"✨ [DONE] 第 {day_count} 天复盘完成")
+print(f"✨ [DONE] 第 {day_count} 天复盘完成（数据源：盲化脱敏版）")
 print(f"   数据截至：{latest_date.date()}")
 print(f"   组合等权收益：{total_ret:+.2f}%")
 print(f"   本轮盈利笔数：{win_count}/{total_count}")
