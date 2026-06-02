@@ -1,0 +1,53 @@
+{
+    "generated_time": "2026-05-02 20:30:45",
+    "rows": 89384,
+    "cols": 409,
+    "memory_mb": 144.64705276489258,
+    "date_min": "2017-12-21 00:00:00",
+    "date_max": "2026-04-30 00:00:00",
+    "n_dates": 2026,
+    "n_symbols": 55,
+    "missing_rate_global": 0.025324568680566602,
+    "cs_z_mean": -0.004995028953999281,
+    "cs_z_std": 0.929542064666748,
+    "labels": {
+        "label_1d": {
+            "exists": true,
+            "missing_rate": 0.0006153226528237716
+        },
+        "label_dir": {
+            "exists": true,
+            "missing_rate": 0.003076613264118858
+        },
+        "ret_1": {
+            "exists": true,
+            "missing_rate": 0.0006153226528237716
+        }
+    },
+    "constant_columns": [
+        "sp500_dispersion",
+        "vix_dispersion",
+        "dxy_dispersion",
+        "usdcny_dispersion",
+        "us10y_dispersion",
+        "inf_expect_dispersion",
+        "real_rate_dispersion",
+        "wti_dispersion",
+        "audusd_dispersion",
+        "usdcnh_dispersion",
+        "usdjpy_dispersion",
+        "vr_valid_dispersion"
+    ],
+    "top_symbols": {
+        "FU": 2013,
+        "AG": 2013,
+        "AL": 2013,
+        "AP": 2013,
+        "AU": 2013,
+        "BU": 2013,
+        "CU": 2013,
+        "FG": 2013,
+        "HC": 2013,
+        "IC": 2013
+    }
+}

@@ -1,0 +1,3 @@
+﻿factor,category,icir,is_ic,oos_ic,oos_decay,sector_cons,lookahead_tag
+usdjpy_cs_z,其他,0.9953,0.0662,0.0182,-1.637,0.8889,✅安全
+audusd_cs_z,其他,0.6311,0.0503,-0.013,-0.371,0.5556,✅安全
